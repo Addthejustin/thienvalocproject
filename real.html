@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Giờ Ra Chơi - Đối phó bạo lực học đường</title>
+	<style>
+		:root {
+			--ink: #193047;
+			--muted: #6b7f91;
+			--cream: #fff9ed;
+			--paper: #fffdf8;
+			--teal: #1c9c95;
+			--teal-dark: #12716f;
+			--coral: #ef755e;
+			--yellow: #f7c95b;
+			--line: #d9e5e5;
+			--shadow: 0 24px 60px rgba(25, 48, 71, 0.16);
+		}
+
+		* { box-sizing: border-box; }
+		html, body { margin: 0; min-height: 100%; }
+		body {
+			background: #e9f4f2;
+			color: var(--ink);
+			font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+			padding: 18px;
+		}
+
+		.app {
+			width: min(1180px, 100%);
+			margin: auto;
+			background: var(--paper);
+			border: 1px solid rgba(28, 156, 149, .2);
+			border-radius: 24px;
+			overflow: hidden;
+			box-shadow: var(--shadow);
+		}
+
+		header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 20px;
+			padding: 18px 24px;
+			background: var(--ink);
+			color: white;
+		}
+
+		.brand { display: flex; align-items: center; gap: 12px; }
+		.brand-mark {
+			display: grid;
+			place-items: center;
+			width: 42px; height: 42px;
+			border-radius: 13px;
+			background: var(--yellow);
+			color: var(--ink);
+			font-size: 23px;
+		}
+		h1, h2, p { margin: 0; }
+		h1 { font-size: clamp(1.1rem, 2vw, 1.45rem); letter-spacing: .02em; }
+		.subtitle { color: #b7d2d5; font-size: .86rem; margin-top: 3px; }
+		.score-box { text-align: right; font-size: .8rem; color: #b7d2d5; }
+		.score-box strong { display: block; color: var(--yellow); font-size: 1.22rem; }
+
+		.main { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, .95fr); }
+		.scene-wrap { padding: 18px; background: var(--cream); }
+		.scene-frame { position: relative; overflow: hidden; border-radius: 17px; border: 3px solid #c7dfd9; background: #b8ddd1; }
+		canvas { display: block; width: 100%; aspect-ratio: 16 / 10; image-rendering: pixelated; }
+		.hint {
+			position: absolute; left: 14px; bottom: 12px;
+			padding: 7px 10px; border-radius: 8px;
+			background: rgba(25, 48, 71, .86); color: white; font-size: .78rem;
+			pointer-events: none;
+		}
+
+		.side { padding: 22px; border-left: 1px solid var(--line); min-height: 560px; display: flex; flex-direction: column; gap: 16px; }
+		.eyebrow { color: var(--teal-dark); font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+		.side h2 { font-size: clamp(1.25rem, 2vw, 1.65rem); line-height: 1.13; margin-top: 4px; }
+		.progress { height: 8px; background: #e2eeee; border-radius: 99px; overflow: hidden; }
+		.progress span { display: block; height: 100%; width: 0; background: var(--teal); transition: width .3s ease; }
+		.dialogue { line-height: 1.6; color: #426072; font-size: .96rem; min-height: 110px; }
+		.speaker { color: var(--coral); font-weight: 800; margin-bottom: 5px; }
+		.choices { display: grid; gap: 10px; }
+		.choice, .action {
+			border: 1px solid #c8dddd; border-radius: 11px; background: white; color: var(--ink);
+			padding: 11px 12px; text-align: left; font: inherit; cursor: pointer; transition: transform .15s, border-color .15s, background .15s;
+		}
+		.choice:hover, .action:hover { transform: translateY(-2px); border-color: var(--teal); background: #f2fbf9; }
+		.choice:disabled { cursor: default; transform: none; opacity: .7; }
+		.choice.correct { border-color: var(--teal); background: #dcf6ee; }
+		.choice.near { border-color: var(--yellow); background: #fff8dc; }
+		.choice.wrong { border-color: var(--coral); background: #fff0eb; }
+		.choice b { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 7px; border-radius: 7px; background: #eaf2f3; color: var(--teal-dark); }
+		.feedback { min-height: 40px; color: var(--teal-dark); font-size: .87rem; line-height: 1.4; }
+		.action { width: 100%; background: var(--teal); color: white; border-color: var(--teal); text-align: center; font-weight: 800; }
+		.action:hover { background: var(--teal-dark); color: white; }
+		.action.secondary { background: white; color: var(--teal-dark); }
+		.hidden { display: none; }
+
+		.controls { display: flex; flex-wrap: wrap; gap: 7px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: .78rem; }
+		kbd { padding: 3px 6px; border: 1px solid #c8d4d7; border-bottom-width: 2px; border-radius: 5px; background: #f7fbfa; color: var(--ink); font-family: inherit; }
+		.toast { min-height: 20px; color: var(--coral); font-size: .84rem; font-weight: 700; }
+
+		@media (max-width: 800px) {
+			body { padding: 0; }
+			.app { border-radius: 0; }
+			header { padding: 15px; }
+			.main { grid-template-columns: 1fr; }
+			.side { min-height: auto; border-left: 0; border-top: 1px solid var(--line); padding: 18px; }
+			.scene-wrap { padding: 10px; }
+			.hint { font-size: .7rem; }
+		}
+	</style>
+</head>
+<body>
+	<div class="app">
+		<header>
+			<div class="brand">
+				<div class="brand-mark">✦</div>
+				<div><h1>Giờ Ra Chơi</h1><div class="subtitle">Một game tình huống về phòng chống bạo lực học đường</div></div>
+			</div>
+			<div class="score-box">ĐIỂM AN TOÀN<strong id="score">0 / 100</strong></div>
+		</header>
+
+		<main class="main">
+			<section class="scene-wrap">
+				<div class="scene-frame">
+					<canvas id="game" width="800" height="500" aria-label="Bản đồ game 2D"></canvas>
+					<div class="hint">Di chuyển: WASD / phím mũi tên · Tương tác: E</div>
+				</div>
+			</section>
+
+			<aside class="side">
+				<div>
+					<div class="eyebrow" id="stepLabel">Tình huống 1 / 5</div>
+					<h2 id="title">Một vị khách đang cần giúp đỡ</h2>
+				</div>
+				<div class="progress"><span id="progress"></span></div>
+				<div class="dialogue"><div class="speaker" id="speaker">An · học sinh</div><div id="text">Hãy đi lại gần các nhân vật có dấu chấm than để bắt đầu.</div></div>
+				<div class="choices" id="choices"></div>
+				<div class="feedback" id="feedback"></div>
+				<button class="action hidden" id="nextBtn">Tiếp tục tình huống</button>
+				<button class="action secondary" id="resetBtn">Chơi lại từ đầu</button>
+				<div class="toast" id="toast"></div>
+				<div class="controls"><span><kbd>WASD</kbd> di chuyển</span><span><kbd>E</kbd> nói chuyện</span><span>Đi đến NPC sáng màu</span></div>
+			</aside>
+		</main>
+	</div>
+
+	<script>
+		const canvas = document.getElementById('game');
+		const ctx = canvas.getContext('2d');
+		const schoolSignImage = new Image();
+		schoolSignImage.src = 'school-sign.png';
+		const ui = {
+			score: document.getElementById('score'), title: document.getElementById('title'), speaker: document.getElementById('speaker'),
+			text: document.getElementById('text'), choices: document.getElementById('choices'), feedback: document.getElementById('feedback'),
+			next: document.getElementById('nextBtn'), reset: document.getElementById('resetBtn'), toast: document.getElementById('toast'),
+			step: document.getElementById('stepLabel'), progress: document.getElementById('progress')
+		};
+		const keys = {};
+		const player = { x: 120, y: 355, speed: 185, facing: 1, moving: false };
+		const state = { score: 0, scene: 0, active: false, answered: false, message: '', last: 0 };
+		const npcs = [
+			{ x: 300, y: 185, name: 'Minh', color: '#ec8e62', label: 'HỌC SINH', scene: 0 },
+			{ x: 535, y: 315, name: 'Vy', color: '#7c9ee8', label: 'HỌC SINH', scene: 1 },
+			{ x: 665, y: 155, name: 'Quân', color: '#d981b4', label: 'HỌC SINH', scene: 2 },
+			{ x: 455, y: 105, name: 'Hà', color: '#8bbf73', label: 'HỌC SINH', scene: 3 },
+			{ x: 210, y: 120, name: 'Lan', color: '#7bb59a', label: 'HỌC SINH', scene: 4 }
+		];
+		const scenes = [
+			{ title: 'Bạn cùng lớp bị chặn ở hành lang', speaker: 'Minh · bạn cùng lớp', text: 'Bạn thấy hai học sinh đang vây Minh, giật cặp và trêu chọc. Minh rất sợ và không thể tự rời đi.', choices: [
+				['Giữ khoảng cách an toàn, gọi giáo viên và rủ thêm bạn đáng tin hỗ trợ.', 20, 'Chính xác! Không đối đầu một mình, ưu tiên đưa người lớn đến và bảo vệ Minh.'],
+				['Xông vào đánh lại để bênh Minh.', 0, 'Đánh lại có thể làm tình hình nguy hiểm hơn. Hãy tìm người lớn ngay.'],
+				['Quay video rồi đăng lên nhóm lớp.', 10, 'Không đăng hay phát tán hình ảnh. Hãy báo giáo viên và giữ thông tin riêng tư.']
+			]},
+			{ title: 'Tin nhắn bắt nạt trong nhóm lớp', speaker: 'Vy · nhân chứng', text: 'Vy cho bạn xem nhóm chat nơi một bạn bị chế giễu và nhiều người đang gửi ảnh riêng tư của bạn ấy.', choices: [
+				['Không tiếp tay; lưu bằng chứng và báo giáo viên hoặc phụ huynh.', 20, 'Đúng! Bạn không lan truyền nội dung gây hại và giúp người lớn can thiệp.'],
+				['Thả biểu tượng cười để không bị chú ý.', 0, 'Tương tác đó vẫn khiến nạn nhân bị tổn thương và làm hành vi bắt nạt tiếp diễn.'],
+				['Chuyển tiếp ảnh cho một người bạn thân.', 10, 'Không nên chia sẻ ảnh riêng tư. Hãy giữ bằng chứng an toàn và báo người lớn.']
+			]},
+			{ title: 'Một bạn muốn nói ra sự việc', speaker: 'Quân · bạn cùng lớp', text: 'Quân thấy bạn có vẻ buồn và hỏi chuyện. Bạn ấy nói mình thường bị đe dọa nhưng sợ bị trả đũa nếu kể lại.', choices: [
+				['Lắng nghe, tin bạn ấy và cùng báo thầy cô hoặc người lớn đáng tin.', 20, 'Rất tốt! Lắng nghe không phán xét và kết nối hỗ trợ là điều cần thiết.'],
+				['Bảo bạn ấy im lặng để mọi chuyện tự qua.', 0, 'Im lặng có thể khiến bạo lực tiếp diễn. Bạn ấy cần được bảo vệ và hỗ trợ.'],
+				['Hứa sẽ tự đi cảnh cáo nhóm bắt nạt.', 10, 'Không nên tự đối đầu. Hãy báo người có trách nhiệm để có kế hoạch an toàn.']
+			]},
+			{ title: 'Đồng hành cùng bạn bị bắt nạt', speaker: 'Hà · bạn bị bắt nạt', text: 'Hà muốn trở lại lớp nhưng lo sẽ gặp nhóm đã bắt nạt mình. Bạn có thể làm gì để giúp Hà an toàn hơn?', choices: [
+				['Đi cùng Hà đến chỗ giáo viên, thống nhất nơi an toàn và người có thể gọi.', 20, 'Hoàn hảo! Một kế hoạch an toàn cụ thể giúp Hà không phải đối mặt một mình.'],
+				['Rủ Hà đi tìm nhóm kia để nói chuyện cho xong.', 0, 'Đối đầu có thể làm nguy cơ tăng lên. Hãy để người lớn hỗ trợ và giám sát.'],
+				['Bảo Hà nghỉ học vài ngày là ổn.', 10, 'Nghỉ học không giải quyết nguyên nhân. Hà cần được bảo vệ để tiếp tục học tập an toàn.']
+			]},
+			{ title: 'Một bạn bị ép nói xấu người khác', speaker: 'Lan · bạn cùng lớp', text: 'Lan đang bị một số bạn ép phải nói xấu một bạn khác trước mặt cả lớp để tránh bị nhục mạ. Lan rất lo lắng và không biết phải làm gì.', choices: [
+				['Dẫn Lan ra khỏi đám đông, nhắn cho thầy cô hoặc người lớn đáng tin cậy và giữ Lan ở nơi an toàn.', 20, 'Tốt! Bạn hành động kịp thời và giúp Lan tránh bị ép buộc tiếp tục bị đe dọa.'],
+				['Bảo Lan theo lời họ để xong chuyện, vì “đỡ rắc rối hơn”.', 0, 'Không nên bắt Lan làm theo áp lực. Hành vi ấy vẫn khiến Lan bị tổn thương và làm mất an toàn.'],
+				['Đợi cho nhóm đấy tan rồi mới hỏi Lan, để không làm người khác khó xử.', 10, 'Đó là phản ứng khá tốt nhưng vẫn nên can thiệp sớm và báo người lớn vì việc này đang gây áp lực rất lớn.']
+			]}
+		];
+
+		function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+		function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+		function nearNpc() { return npcs.find(npc => npc.scene === state.scene && distance(player, npc) < 76); }
+		function setToast(message) { ui.toast.textContent = message; clearTimeout(setToast.timer); setToast.timer = setTimeout(() => ui.toast.textContent = '', 2200); }
+		function drawText(text, x, y, size, color, align = 'center') { ctx.fillStyle = color; ctx.font = `700 ${size}px Trebuchet MS, sans-serif`; ctx.textAlign = align; ctx.fillText(text, x, y); }
+
+		function drawScene(time) {
+			const w = canvas.width, h = canvas.height;
+			ctx.clearRect(0, 0, w, h);
+			if (state.scene === 0) drawCorridor(w, h);
+			else if (state.scene === 3) drawStreet(w, h);
+			else drawSchoolyard(w, h);
+			if (state.scene !== 0) drawMidAutumnDecor(w, h);
+			npcs.forEach((npc, index) => { if (npc.scene === state.scene) drawNpc(npc, time, index); });
+			drawPlayer(time);
+		}
+
+		function drawMidAutumnDecor(w, h) {
+			ctx.fillStyle = '#fff1a8'; ctx.beginPath(); ctx.arc(w - 92, 72, 24, 0, Math.PI * 2); ctx.fill();
+			ctx.fillStyle = '#f3d978'; ctx.beginPath(); ctx.arc(w - 81, 64, 24, 0, Math.PI * 2); ctx.fill();
+			ctx.fillStyle = '#fff4b9';
+			[[42, 58], [285, 78], [505, 34], [w - 28, 116]].forEach(([x, y]) => {
+				ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
+			});
+			ctx.strokeStyle = '#7e5a48'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 38); ctx.quadraticCurveTo(180, 66, 360, 38); ctx.quadraticCurveTo(560, 10, w, 42); ctx.stroke();
+			function lantern(x, y, color) {
+				ctx.strokeStyle = '#7e5a48'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - 25); ctx.lineTo(x, y - 5); ctx.stroke();
+				ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y + 5, 13, 17, 0, 0, Math.PI * 2); ctx.fill();
+				ctx.fillStyle = '#f8e3a0'; ctx.fillRect(x - 2, y - 10, 4, 30);
+				ctx.fillStyle = '#9d4b43'; ctx.fillRect(x - 10, y - 10, 20, 4); ctx.fillRect(x - 10, y + 17, 20, 4);
+				ctx.strokeStyle = '#9d4b43'; ctx.beginPath(); ctx.moveTo(x, y + 21); ctx.lineTo(x, y + 30); ctx.stroke();
+			}
+			lantern(150, 54, '#e85d4f'); lantern(390, 54, '#f2b63f'); lantern(650, 54, '#e85d4f');
+		}
+
+		function drawCorridor(w, h) {
+			ctx.fillStyle = '#e9e0cf'; ctx.fillRect(0, 0, w, h);
+			ctx.fillStyle = '#c9b18d'; ctx.fillRect(0, 0, w, 40);
+			ctx.fillStyle = '#b88c5a'; ctx.fillRect(0, 375, w, 125);
+			ctx.fillStyle = '#dfbd86'; ctx.fillRect(0, 380, w, 5);
+			ctx.fillStyle = '#fff1a8'; ctx.beginPath(); ctx.arc(705, 82, 25, 0, Math.PI * 2); ctx.fill();
+			ctx.fillStyle = '#f3d978'; ctx.beginPath(); ctx.arc(716, 74, 25, 0, Math.PI * 2); ctx.fill();
+			ctx.fillStyle = '#fff4b9';
+			[[35, 62], [285, 74], [520, 32], [770, 112]].forEach(([x, y]) => {
+				ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
+			});
+			ctx.strokeStyle = '#7e5a48'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 38); ctx.quadraticCurveTo(170, 66, 340, 38); ctx.quadraticCurveTo(510, 10, 800, 42); ctx.stroke();
+			function lantern(x, y, color) {
+				ctx.strokeStyle = '#7e5a48'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - 25); ctx.lineTo(x, y - 5); ctx.stroke();
+				ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y + 5, 13, 17, 0, 0, Math.PI * 2); ctx.fill();
+				ctx.fillStyle = '#f8e3a0'; ctx.fillRect(x - 2, y - 10, 4, 30);
+				ctx.fillStyle = '#9d4b43'; ctx.fillRect(x - 10, y - 10, 20, 4); ctx.fillRect(x - 10, y + 17, 20, 4);
+				ctx.strokeStyle = '#9d4b43'; ctx.beginPath(); ctx.moveTo(x, y + 21); ctx.lineTo(x, y + 30); ctx.stroke();
+			}
+			lantern(305, 53, '#e85d4f'); lantern(730, 53, '#e85d4f'); lantern(30, 54, '#f2b63f');
+			ctx.fillStyle = '#f5f0df'; ctx.fillRect(55, 70, 210, 105);
+			ctx.strokeStyle = '#8d633c'; ctx.lineWidth = 8; ctx.strokeRect(51, 66, 218, 113);
+			drawText('HÀNH LANG TRƯỜNG', 160, 96, 14, '#193047');
+			drawText('TRUNG THU', 160, 119, 11, '#c45a45');
+			ctx.strokeStyle = '#8fb9b5'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(85, 126); ctx.lineTo(235, 126); ctx.moveTo(85, 151); ctx.lineTo(210, 151); ctx.stroke();
+			ctx.fillStyle = '#d2a064'; ctx.fillRect(360, 55, 105, 285); ctx.fillStyle = '#b47c4d'; ctx.fillRect(370, 65, 85, 265);
+			ctx.fillStyle = '#ead09b'; for (let y = 87; y < 325; y += 38) ctx.fillRect(379, y, 67, 25);
+			ctx.fillStyle = '#6d999d'; ctx.fillRect(0, 470, w, 30);
+		}
+
+		function drawSchoolyard(w, h) {
+			ctx.fillStyle = '#f3ead6'; ctx.fillRect(0, 0, w, h);
+			ctx.fillStyle = '#d9c6a6'; ctx.fillRect(0, 0, w, 42);
+			ctx.fillStyle = '#c6b08e'; ctx.fillRect(0, 42, w, 5);
+			ctx.fillStyle = '#c9a878'; ctx.fillRect(0, 375, w, 125);
+			ctx.fillStyle = '#e0bd87'; ctx.fillRect(0, 380, w, 5);
+			ctx.fillStyle = '#253e4b'; ctx.fillRect(70, 68, 240, 120);
+			ctx.strokeStyle = '#8d633c'; ctx.lineWidth = 8; ctx.strokeRect(66, 64, 248, 128);
+			drawText('BẢNG LỚP 8A', 190, 92, 14, '#f7f0d1');
+			ctx.strokeStyle = '#a8d6d1'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(105, 125); ctx.lineTo(260, 125); ctx.moveTo(105, 153); ctx.lineTo(225, 153); ctx.stroke();
+			ctx.fillStyle = '#b8dfe5'; ctx.fillRect(555, 68, 170, 118); ctx.strokeStyle = '#8d633c'; ctx.lineWidth = 7; ctx.strokeRect(551, 64, 178, 126);
+			ctx.strokeStyle = '#f3ead6'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(640, 68); ctx.lineTo(640, 186); ctx.moveTo(555, 127); ctx.lineTo(725, 127); ctx.stroke();
+			ctx.fillStyle = '#d0a56b'; ctx.fillRect(365, 58, 96, 285); ctx.fillStyle = '#b78351'; ctx.fillRect(374, 68, 78, 265);
+			ctx.fillStyle = '#e3c58e'; for (let y = 88; y < 325; y += 38) ctx.fillRect(382, y, 62, 25);
+			ctx.fillStyle = '#87603f'; for (let x = 90; x < 330; x += 110) { ctx.fillRect(x, 290, 64, 12); ctx.fillRect(x + 8, 302, 7, 56); ctx.fillRect(x + 50, 302, 7, 56); ctx.fillStyle = '#e0a35d'; ctx.fillRect(x + 6, 278, 52, 14); ctx.fillStyle = '#87603f'; }
+			ctx.fillStyle = '#87603f'; for (let x = 510; x < 750; x += 110) { ctx.fillRect(x, 290, 64, 12); ctx.fillRect(x + 8, 302, 7, 56); ctx.fillRect(x + 50, 302, 7, 56); }
+			ctx.fillStyle = '#729da0'; ctx.fillRect(0, 470, w, 30);
+		}
+
+		function drawStreet(w, h) {
+			ctx.fillStyle = '#b9d8e3'; ctx.fillRect(0, 0, w, h);
+			ctx.fillStyle = '#dfe9e6'; ctx.fillRect(0, 45, w, 215);
+			ctx.fillStyle = '#a8b8bd'; ctx.fillRect(0, 260, w, 42);
+			ctx.fillStyle = '#343f4d'; ctx.fillRect(0, 302, w, 198);
+			ctx.fillStyle = '#f6d783';
+			for (let x = 30; x < w; x += 145) ctx.fillRect(x, 394, 72, 8);
+			ctx.fillStyle = '#b8c7c6'; ctx.fillRect(70, 150, 220, 110); ctx.fillRect(520, 130, 215, 130);
+			ctx.fillStyle = '#86b9c9'; ctx.fillRect(90, 170, 55, 60); ctx.fillRect(165, 170, 55, 60); ctx.fillRect(540, 150, 55, 70); ctx.fillRect(615, 150, 55, 70);
+			ctx.fillStyle = '#637681'; ctx.fillRect(315, 88, 110, 172); ctx.fillStyle = '#e9d49d'; ctx.fillRect(327, 105, 86, 138);
+			drawText('CỔNG TRƯỜNG', 370, 132, 13, '#193047');
+			ctx.fillStyle = '#c5d5d1'; ctx.fillRect(455, 170, 22, 90); ctx.fillStyle = '#f4e4a8'; ctx.beginPath(); ctx.arc(466, 151, 15, 0, Math.PI * 2); ctx.fill();
+			ctx.fillStyle = '#4148c9'; ctx.fillRect(470, 62, 275, 58);
+			if (schoolSignImage.complete && schoolSignImage.naturalWidth > 0) {
+				ctx.drawImage(schoolSignImage, 476, 68, 263, 46);
+			} else {
+				drawText('TRƯỜNG THCS', 607, 84, 10, '#ffffff');
+				drawText('THANH ĐA', 607, 107, 21, '#f5d235');
+			}
+			ctx.strokeStyle = '#f5d235'; ctx.lineWidth = 3; ctx.strokeRect(470, 62, 275, 58);
+		}
+
+		function drawNpc(npc, time, index) {
+			const pulse = Math.sin(time / 300) * 3;
+			ctx.fillStyle = 'rgba(25,48,71,.13)'; ctx.beginPath(); ctx.ellipse(npc.x, npc.y + 28, 27, 8, 0, 0, Math.PI * 2); ctx.fill();
+			ctx.fillStyle = '#f4c9a1'; ctx.beginPath(); ctx.arc(npc.x, npc.y, 17, 0, Math.PI * 2); ctx.fill();
+			ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(npc.x - 20, npc.y + 28); ctx.lineTo(npc.x - 15, npc.y - 5); ctx.lineTo(npc.x + 15, npc.y - 5); ctx.lineTo(npc.x + 20, npc.y + 28); ctx.closePath(); ctx.fill();
+			ctx.fillStyle = '#ffffff'; ctx.fillRect(npc.x - 5, npc.y - 4, 10, 29);
+			ctx.fillStyle = '#d9363e'; ctx.beginPath(); ctx.moveTo(npc.x, npc.y - 5); ctx.lineTo(npc.x - 8, npc.y + 2); ctx.lineTo(npc.x, npc.y + 12); ctx.lineTo(npc.x + 8, npc.y + 2); ctx.closePath(); ctx.fill();
+			ctx.fillRect(npc.x + 1, npc.y + 8, 6, 17);
+			ctx.fillStyle = '#f4c9a1'; ctx.beginPath(); ctx.arc(npc.x, npc.y - 18, 13, 0, Math.PI * 2); ctx.fill();
+			ctx.fillStyle = '#26384b'; ctx.fillRect(npc.x - 13, npc.y - 32, 26, 7);
+			drawText(npc.name, npc.x, npc.y + 51, 12, '#193047');
+			ctx.fillStyle = '#f7c95b'; ctx.beginPath(); ctx.arc(npc.x, npc.y - 55 + pulse, 13, 0, Math.PI * 2); ctx.fill();
+			drawText('!', npc.x, npc.y - 50 + pulse, 16, '#193047');
+			if (distance(player, npc) < 76 && !state.active) { drawText('E  NÓI CHUYỆN', npc.x, npc.y + 72, 11, '#12716f'); }
+			if (index === 99) return;
+		}
+
+		function drawPlayer(time) {
+			ctx.save(); ctx.translate(player.x, player.y); ctx.scale(player.facing, 1);
+			ctx.fillStyle = 'rgba(25,48,71,.15)'; ctx.beginPath(); ctx.ellipse(0, 28, 25, 7, 0, 0, Math.PI * 2); ctx.fill();
+			ctx.fillStyle = '#f4c9a1'; ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill();
+			ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(-20, 28); ctx.lineTo(-15, -5); ctx.lineTo(15, -5); ctx.lineTo(20, 28); ctx.closePath(); ctx.fill();
+			ctx.fillStyle = '#ffffff'; ctx.fillRect(-5, -4, 10, 29);
+			ctx.fillStyle = '#d9363e'; ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(-8, 2); ctx.lineTo(0, 12); ctx.lineTo(8, 2); ctx.closePath(); ctx.fill();
+			ctx.fillRect(1, 8, 6, 17);
+			ctx.fillStyle = '#f5c9a2'; ctx.beginPath(); ctx.arc(0, -20, 14, 0, Math.PI * 2); ctx.fill();
+			ctx.fillStyle = '#193047'; ctx.fillRect(-15, -34, 30, 8); ctx.fillRect(6, -29, 11, 8);
+			ctx.fillStyle = '#fff9ed'; ctx.fillRect(4, 6, 6, 6); ctx.restore();
+			if (player.moving && Math.floor(time / 170) % 2 === 0) { ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.fillRect(player.x - 26, player.y + 29, 7, 3); }
+		}
+
+		function renderPanel() {
+			const scene = scenes[state.scene];
+			ui.score.textContent = `${state.score} / 100`;
+			ui.step.textContent = state.scene < scenes.length ? `TÌNH HUỐNG ${state.scene + 1} / ${scenes.length}` : 'HOÀN THÀNH';
+			ui.title.textContent = state.scene < scenes.length ? scene.title : 'Ca trực đã kết thúc';
+			ui.progress.style.width = `${(state.scene / scenes.length) * 100}%`;
+			if (!state.active) {
+				const npc = nearNpc();
+				ui.speaker.textContent = npc ? `${npc.name} · ${npc.label.toLowerCase()}` : 'An · học sinh';
+				ui.text.textContent = npc ? 'Nhấn E để bắt đầu cuộc trò chuyện.' : 'Hãy đi lại gần nhân vật có dấu chấm than để bắt đầu.';
+			}
+		}
+
+		function startDialogue() {
+			const npc = nearNpc(); if (!npc || state.active || state.scene >= scenes.length) return;
+			state.active = true; state.answered = false;
+			const scene = scenes[state.scene];
+			ui.speaker.textContent = scene.speaker; ui.text.textContent = scene.text; ui.feedback.textContent = '';
+			ui.choices.innerHTML = scene.choices.map((choice, i) => `<button class="choice" data-index="${i}"><b>${String.fromCharCode(65 + i)}</b>${choice[0]}</button>`).join('');
+			ui.next.classList.add('hidden'); renderPanel();
+			ui.choices.querySelectorAll('.choice').forEach(button => button.addEventListener('click', () => answer(Number(button.dataset.index))));
+		}
+
+		function answer(index) {
+			if (state.answered) return;
+			state.answered = true;
+			const choice = scenes[state.scene].choices[index]; state.score += choice[1];
+			ui.choices.querySelectorAll('.choice').forEach((button, i) => {
+				button.disabled = true;
+				if (i === index) {
+					const status = choice[1] >= 15 ? 'correct' : choice[1] >= 10 ? 'near' : 'wrong';
+					button.classList.add(status);
+				}
+			});
+			const statusIcon = choice[1] >= 15 ? '✓ ' : choice[1] >= 10 ? '△ ' : '• ';
+			ui.feedback.textContent = `${statusIcon}${choice[2]} (+${choice[1]} điểm)`;
+			ui.next.textContent = state.scene === scenes.length - 1 ? 'Xem kết quả' : 'Sang tình huống tiếp theo';
+			ui.next.classList.remove('hidden'); renderPanel();
+		}
+
+		function nextScene() {
+			state.scene += 1; state.active = false; state.answered = false; ui.choices.innerHTML = ''; ui.feedback.textContent = '';
+			if (state.scene >= scenes.length) { ui.speaker.textContent = 'An · tổng kết'; ui.text.textContent = state.score >= 70 ? 'Bạn đã hoàn thành các tình huống với tinh thần quan sát và hỗ trợ bạn bè rất tốt.' : 'Các tình huống đã kết thúc. Hãy thử lại để luyện cách xử lý an toàn hơn.'; ui.next.classList.add('hidden'); setToast('Hoàn thành các tình huống!'); }
+			else { player.x = 120; player.y = 355; setToast('Tình huống mới đã mở trên bản đồ.'); }
+			renderPanel();
+		}
+
+		function reset() { state.score = 0; state.scene = 0; state.active = false; state.answered = false; player.x = 120; player.y = 355; ui.choices.innerHTML = ''; ui.feedback.textContent = ''; ui.next.classList.add('hidden'); renderPanel(); setToast('Đã bắt đầu lại.'); }
+		function update(delta) {
+			if (!state.active && state.scene < scenes.length) {
+				let x = 0, y = 0; if (keys.w || keys.ArrowUp) y--; if (keys.s || keys.ArrowDown) y++; if (keys.a || keys.ArrowLeft) x--; if (keys.d || keys.ArrowRight) x++;
+				player.moving = x !== 0 || y !== 0;
+				if (player.moving) { const length = Math.hypot(x, y); player.x = clamp(player.x + x / length * player.speed * delta, 35, 765); player.y = clamp(player.y + y / length * player.speed * delta, 65, 440); if (x) player.facing = x > 0 ? 1 : -1; }
+			} else player.moving = false;
+		}
+		function loop(time) { const delta = Math.min(.04, (time - state.last) / 1000 || 0); state.last = time; update(delta); drawScene(time); requestAnimationFrame(loop); }
+		window.addEventListener('keydown', event => { keys[event.key] = true; if (event.key.toLowerCase() === 'e') startDialogue(); if (event.key === ' ') event.preventDefault(); });
+		window.addEventListener('keyup', event => { keys[event.key] = false; });
+		ui.next.addEventListener('click', nextScene); ui.reset.addEventListener('click', reset);
+		renderPanel(); requestAnimationFrame(loop);
+	</script>
+</body>
+</html>
