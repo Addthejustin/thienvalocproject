@@ -1,2 +1,0 @@
-# thienvalocproject
-nckhkt
